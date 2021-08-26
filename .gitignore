@@ -31,3 +31,4 @@ venv.bak/
 *.db
 *.db.backup
 *.csv
+.idea/
