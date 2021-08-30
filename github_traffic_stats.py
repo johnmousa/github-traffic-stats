@@ -61,6 +61,7 @@ def collect(user, repo, token, org):
                 print(timestamp, data)
                 found_new_data = True
 
+    print('For {}/{}: '.format(org, repo))
     if not found_new_data:
         print('No new traffic data was found for ' + org + '/' + repo)
     db.dump()
