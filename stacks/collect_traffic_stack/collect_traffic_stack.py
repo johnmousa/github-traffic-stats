@@ -19,7 +19,8 @@ class CollectTrafficStack(cdk.Stack):
 
         # create dynamo table
         traffic_table = _dynamodb.Table(
-            self, "github_repositories_table",
+            self, "github_traffic_table",
+            table_name="github_traffic_table",
             partition_key=_dynamodb.Attribute(
                 name="repo",
                 type=_dynamodb.AttributeType.STRING

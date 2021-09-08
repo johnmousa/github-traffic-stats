@@ -11,7 +11,6 @@ dynamodb = boto3.resource('dynamodb')
 
 
 def lambda_handler(event, context):
-    print(json.dumps(event))
     try:
         owner = event['owner']
         repo = event['repo']
@@ -28,7 +27,7 @@ def lambda_handler(event, context):
             )
         )
 
-        operation = 'PUT' if event['verb'] is None else event['verb']
+        operation = 'PUT' if 'verb' not in event or event['verb'] is None else event['verb']
 
         if operation == 'PUT':
             create_repository(encrypted_table, owner, repo, token)

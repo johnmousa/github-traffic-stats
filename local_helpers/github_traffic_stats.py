@@ -96,7 +96,7 @@ def export_to_csv(repo, csv_filename=None):
 
 
 def __load_db(repo):
-    return pickledb.load('{repo}_views.db'.format(repo=repo), False)
+    return pickledb.load('{repo}.db'.format(repo=repo), False)
 
 
 def main():

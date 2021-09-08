@@ -12,15 +12,15 @@ from botocore.exceptions import ClientError
 
 dynamodb = boto3.resource('dynamodb')
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
-    new_analytics = False
+    new_analytics = {}
     for record in event["Records"]:
         try:
             repo = json.loads(record['body'])['repo']
-            new_analytics = collect(repo)
+            new_analytics[repo] = collect(repo)
         except Exception as e:
             print(e)
             raise e
@@ -42,14 +42,16 @@ def collect(repo):
 
     views_14_days = gh.repos(owner, repo).traffic.views.get()
     clones_14_days = gh.repos(owner, repo).traffic.clones.get()
-    logger.debug(json.dumps(views_14_days))
-    logger.debug(json.dumps(clones_14_days))
+    logger.info("views github api {}".format(json.dumps(views_14_days)))
+    logger.info("clones github api {}".format(json.dumps(clones_14_days)))
     data = merge_clone_and_views_traffic(clones_14_days, views_14_days)
+    return load_traffic_in_dynamodb(key, owner, data)
 
+
+def load_traffic_in_dynamodb(key, owner, new_traffic_data):
     db = load_db()
     found_new_data = False
-
-    for timestamp in data:
+    for timestamp in new_traffic_data:
         db_item = db.get_item(Key={'repo': key, 'timestamp': timestamp})
         if 'Item' not in db_item:
             db.put_item(
@@ -57,15 +59,15 @@ def collect(repo):
                     'repo': key,
                     'timestamp': timestamp,
                     'owner': owner,
-                    'traffic': data[timestamp]
+                    'traffic': new_traffic_data[timestamp]
                 }
             )
-            print('added entry for time: {} with traffic: {}'.format(timestamp, json.dumps(data[timestamp])))
+            print('added entry for time: {} with traffic: {}'.format(timestamp, json.dumps(new_traffic_data[timestamp])))
             found_new_data = True
         else:
-            traffic = db_item['Item']['traffic']
-            if traffic['view_uniques'] < data[timestamp]['view_uniques'] \
-                    or traffic['clone_uniques'] < data[timestamp]['clone_uniques']:
+            existing_traffic = db_item['Item']['traffic']
+            if existing_traffic['view_uniques'] < new_traffic_data[timestamp]['view_uniques'] \
+                    or existing_traffic['clone_uniques'] < new_traffic_data[timestamp]['clone_uniques']:
                 db.update_item(
                     Key={
                         'repo': key,
@@ -73,17 +75,13 @@ def collect(repo):
                     },
                     UpdateExpression="set traffic=:r",
                     ExpressionAttributeValues={
-                        ':r': data[timestamp]
+                        ':r': new_traffic_data[timestamp]
                     },
                     ReturnValues="UPDATED_NEW"
                 )
                 print('updated entry for time: {} with old traffic: {} to new traffic {}'
-                      .format(timestamp, json.dumps(traffic), json.dumps(data[timestamp])))
+                      .format(timestamp, existing_traffic, new_traffic_data[timestamp]))
                 found_new_data = True
-
-    if not found_new_data:
-        print('No new traffic data was found for ' + key)
-
     return found_new_data
 
 

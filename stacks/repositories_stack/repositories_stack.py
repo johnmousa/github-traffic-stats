@@ -19,6 +19,7 @@ class RepositoriesStack(cdk.Stack):
         # create dynamo table
         self.repositories_table = _dynamodb.Table(
             self, "github_repositories_table",
+            table_name="github_repositories_table",
             partition_key=_dynamodb.Attribute(
                 name="repo",
                 type=_dynamodb.AttributeType.STRING
